@@ -4,9 +4,11 @@
 .idea/
 .sass-cache
 .rvmrc
+.direnv
 
 node_modules
 npm-debug.log
+repomix-output-wiki-client.md
 
 
 # ignore generated javascript - recreated by running build
