@@ -174,6 +174,7 @@ require('./test/neighborhood')
 require('./test/search')
 require('./test/drop')
 require('./test/lineup')
+require('./test/target')
 require('./test/wiki')
 require('./test/random')
 

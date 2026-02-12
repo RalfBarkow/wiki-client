@@ -86,4 +86,39 @@ describe('refresh', function () {
       done()
     })
   })
+
+  describe('alias collision handling', function () {
+    it('renames a colliding item id and preserves alias', function () {
+      const aliasItem = function ($page, $item, oldItem, pageObject, makeId) {
+        const item = $.extend({}, oldItem)
+        $item.data('item', item)
+        if (pageObject.getItem(item.id) != null) {
+          if (!item.alias) item.alias = item.id
+          item.id = makeId()
+          $item.attr('data-id', item.id)
+          $item.data('id', item.id)
+          $item.data('item').id = item.id
+        } else if (item.alias != null) {
+          if (pageObject.getItem(item.alias) == null) {
+            item.id = item.alias
+            delete item.alias
+            $item.attr('data-id', item.id)
+          }
+        }
+        return item
+      }
+
+      const $page = $('<div class="page"></div>').data('key', 'p1')
+      const $item = $('<div class="item"></div>').attr('data-id', 'aaaa')
+      const pageObject = {
+        getItem: id => (id === 'aaaa' ? { id: 'aaaa' } : null),
+      }
+
+      const newItem = aliasItem($page, $item, { id: 'aaaa' }, pageObject, () => 'bbbb')
+
+      expect(newItem.id).to.not.be('aaaa')
+      expect(newItem.alias).to.be('aaaa')
+      expect($item.attr('data-id')).to.be(newItem.id)
+    })
+  })
 })
