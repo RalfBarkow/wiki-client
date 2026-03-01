@@ -35,7 +35,9 @@
     "clean:test": "rm client/test/testclient.js",
     "test": "mocha test/util.js test/random.js test/page.js test/lineup.js test/drop.js test/revision.js test/resolve.js test/wiki.js test/networkSecurity.js test/secureContext.js test/siteAdapter.js test/userGesture.js",
     "runtests": "npm run build:test && ((sleep 1; open 'http://localhost:3000/runtests.html')&) && echo '\nBrowser will open to run tests.' && serve client",
-    "update-authors": "node scripts/update-authors.js"
+    "update-authors": "node scripts/update-authors.js",
+    "pw:install": "playwright install --with-deps",
+    "pw:test": "playwright test"
   },
   "dependencies": {
     "async": "^3.2.1",
@@ -53,7 +55,8 @@
     "mocha": "^11.7.1",
     "prettier": "^3.6.2",
     "serve": "^14.2.3",
-    "sinon": "^21.0.0"
+    "sinon": "^21.0.0",
+    "@playwright/test": "^1.50.0"
   },
   "overrides": {
     "compression": "1.8.1"
