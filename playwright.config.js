@@ -1,7 +1,8 @@
 // playwright.config.js
 const { defineConfig } = require('@playwright/test');
 
-const baseURL = process.env.PW_BASE_URL || 'http://localhost:3000';
+const port = process.env.PW_PORT || '3100';
+const baseURL = process.env.PW_BASE_URL || `http://localhost:${port}`;
 
 // Path to the wiki server executable. This repo (wiki-client) does not build it.
 // Default points at the meta repo build artifact.
@@ -21,7 +22,7 @@ module.exports = defineConfig({
   },
 
   webServer: {
-    command: `${wikiBin} --port 3000`,
+    command: `${wikiBin} --port ${port}`,
     url: baseURL,
     reuseExistingServer: true,
     timeout: 120_000,
