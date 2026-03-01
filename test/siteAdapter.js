@@ -6,11 +6,12 @@ describe('siteAdapter', function () {
   const originalDocument = global.document
   const originalLocalStorage = global.localStorage
   const originalDollar = global.$
+  const originalImage = global.Image
   const localForagePath = require.resolve('localforage')
   const userGesturePath = require.resolve('../lib/userGesture')
   const originalLocalForage = require.cache[localForagePath]
 
-  const loadSiteAdapter = function (ajaxImpl) {
+  const loadSiteAdapter = function ({ ajaxImpl = function () {}, imageImpl } = {}) {
     delete require.cache[require.resolve('../lib/siteAdapter')]
     delete require.cache[userGesturePath]
     require.cache[localForagePath] = {
@@ -33,6 +34,7 @@ describe('siteAdapter', function () {
         },
       },
     }
+
     global.window = {
       location: { host: 'wiki.ralfbarkow.ch', protocol: 'https:' },
       addEventListener() {},
@@ -63,6 +65,16 @@ describe('siteAdapter', function () {
       setItem() {},
       removeItem() {},
     }
+    global.Image =
+      imageImpl ||
+      class {
+        set src(_value) {
+          setImmediate(() => {
+            if (typeof this.onload === 'function') this.onload()
+          })
+        }
+      }
+
     const dollar = function () {
       return {
         attr() {},
@@ -74,6 +86,7 @@ describe('siteAdapter', function () {
           }
         },
         trigger() {},
+        each() {},
       }
     }
     dollar.ajax = ajaxImpl
@@ -83,7 +96,6 @@ describe('siteAdapter', function () {
 
   afterEach(function () {
     delete require.cache[require.resolve('../lib/siteAdapter')]
-    delete require.cache[userGesturePath]
     delete require.cache[userGesturePath]
     if (originalLocalForage) {
       require.cache[localForagePath] = originalLocalForage
@@ -95,25 +107,34 @@ describe('siteAdapter', function () {
     global.document = originalDocument
     global.localStorage = originalLocalStorage
     global.$ = originalDollar
+    global.Image = originalImage
   })
 
   it('caches a missing site-index after the first 404', function () {
     let siteIndexRequests = 0
-    const siteAdapter = loadSiteAdapter(function (options) {
-      if (options.url === '//fed.wiki.org/favicon.png') {
-        options.error({ status: 0 }, 'error', 'blocked')
-        return
-      }
-      if (options.url === '/proxy/fed.wiki.org/favicon.png') {
-        options.success()
-        return
-      }
-      if (options.url === '/proxy/fed.wiki.org/system/site-index.json') {
-        siteIndexRequests += 1
-        options.error({ status: 404 }, 'error', 'Not Found')
-        return
-      }
-      throw new Error(`Unexpected ajax url: ${options.url}`)
+    const siteAdapter = loadSiteAdapter({
+      imageImpl: class {
+        set src(value) {
+          if (value === '') return
+          if (value.startsWith('//fed.wiki.org/favicon.png')) {
+            setImmediate(() => this.onerror && this.onerror())
+            return
+          }
+          if (value.startsWith('/proxy/fed.wiki.org/favicon.png')) {
+            setImmediate(() => this.onload && this.onload())
+            return
+          }
+          throw new Error(`Unexpected image url: ${value}`)
+        }
+      },
+      ajaxImpl(options) {
+        if (options.url === '/proxy/fed.wiki.org/system/site-index.json') {
+          siteIndexRequests += 1
+          options.error({ status: 404 }, 'error', 'Not Found')
+          return
+        }
+        throw new Error(`Unexpected ajax url: ${options.url}`)
+      },
     })
 
     const remote = siteAdapter.site('fed.wiki.org')
@@ -141,21 +162,69 @@ describe('siteAdapter', function () {
       })
     })
   })
+
   it('uses svg fallback for temp flags before any user gesture', function () {
-    const siteAdapter = loadSiteAdapter(function (options) {
-      if (options.url === '//example.org/favicon.png') {
-        options.error({ status: 0 }, 'error', 'blocked')
-        return
-      }
-      if (options.url === '/proxy/example.org/favicon.png') {
-        options.success()
-        return
-      }
-      throw new Error(`Unexpected ajax url: ${options.url}`)
+    const imageRequests = []
+    let ajaxCalls = 0
+    const siteAdapter = loadSiteAdapter({
+      imageImpl: class {
+        set src(value) {
+          if (value === '') return
+          imageRequests.push(value)
+          if (value.startsWith('//example.org/favicon.png')) {
+            setImmediate(() => this.onerror && this.onerror())
+            return
+          }
+          if (value.startsWith('/proxy/example.org/favicon.png')) {
+            setImmediate(() => this.onload && this.onload())
+            return
+          }
+          throw new Error(`Unexpected image url: ${value}`)
+        }
+      },
+      ajaxImpl() {
+        ajaxCalls += 1
+      },
     })
 
     const flag = siteAdapter.site('example.org').flag()
     expect(flag.startsWith('data:image/svg+xml,')).to.be(true)
+    expect(ajaxCalls).to.be(0)
+    return new Promise(resolve => {
+      setImmediate(() => {
+        expect(imageRequests[0].startsWith('//example.org/favicon.png?cb=')).to.be(true)
+        resolve()
+      })
+    })
   })
 
+  it('probes favicons with Image loads instead of ajax', function () {
+    const imageRequests = []
+    let ajaxCalls = 0
+    const siteAdapter = loadSiteAdapter({
+      imageImpl: class {
+        set src(value) {
+          if (value === '') return
+          imageRequests.push(value)
+          if (value.startsWith('//direct.example/favicon.png')) {
+            setImmediate(() => this.onload && this.onload())
+            return
+          }
+          throw new Error(`Unexpected image url: ${value}`)
+        }
+      },
+      ajaxImpl() {
+        ajaxCalls += 1
+      },
+    })
+
+    siteAdapter.site('direct.example').flag()
+    expect(ajaxCalls).to.be(0)
+    return new Promise(resolve => {
+      setImmediate(() => {
+        expect(imageRequests[0].startsWith('//direct.example/favicon.png?cb=')).to.be(true)
+        resolve()
+      })
+    })
+  })
 })
