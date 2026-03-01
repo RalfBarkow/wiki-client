@@ -33,7 +33,7 @@
     "clean": "npm run clean:client; npm run clean:test",
     "clean:client": "rm client/client.js client/client.js.map meta-client.json",
     "clean:test": "rm client/test/testclient.js",
-    "test": "mocha test/util.js test/random.js test/page.js test/lineup.js test/drop.js test/revision.js test/resolve.js test/wiki.js test/networkSecurity.js test/secureContext.js test/siteAdapter.js",
+    "test": "mocha test/util.js test/random.js test/page.js test/lineup.js test/drop.js test/revision.js test/resolve.js test/wiki.js test/networkSecurity.js test/secureContext.js test/siteAdapter.js test/userGesture.js",
     "runtests": "npm run build:test && ((sleep 1; open 'http://localhost:3000/runtests.html')&) && echo '\nBrowser will open to run tests.' && serve client",
     "update-authors": "node scripts/update-authors.js"
   },

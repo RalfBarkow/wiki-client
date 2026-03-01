@@ -7,10 +7,12 @@ describe('siteAdapter', function () {
   const originalLocalStorage = global.localStorage
   const originalDollar = global.$
   const localForagePath = require.resolve('localforage')
+  const userGesturePath = require.resolve('../lib/userGesture')
   const originalLocalForage = require.cache[localForagePath]
 
   const loadSiteAdapter = function (ajaxImpl) {
     delete require.cache[require.resolve('../lib/siteAdapter')]
+    delete require.cache[userGesturePath]
     require.cache[localForagePath] = {
       exports: {
         createInstance() {
@@ -31,7 +33,10 @@ describe('siteAdapter', function () {
         },
       },
     }
-    global.window = { location: { host: 'wiki.ralfbarkow.ch', protocol: 'https:' } }
+    global.window = {
+      location: { host: 'wiki.ralfbarkow.ch', protocol: 'https:' },
+      addEventListener() {},
+    }
     global.location = global.window.location
     global.document = {
       createElement() {
@@ -78,6 +83,8 @@ describe('siteAdapter', function () {
 
   afterEach(function () {
     delete require.cache[require.resolve('../lib/siteAdapter')]
+    delete require.cache[userGesturePath]
+    delete require.cache[userGesturePath]
     if (originalLocalForage) {
       require.cache[localForagePath] = originalLocalForage
     } else {
@@ -134,4 +141,21 @@ describe('siteAdapter', function () {
       })
     })
   })
+  it('uses svg fallback for temp flags before any user gesture', function () {
+    const siteAdapter = loadSiteAdapter(function (options) {
+      if (options.url === '//example.org/favicon.png') {
+        options.error({ status: 0 }, 'error', 'blocked')
+        return
+      }
+      if (options.url === '/proxy/example.org/favicon.png') {
+        options.success()
+        return
+      }
+      throw new Error(`Unexpected ajax url: ${options.url}`)
+    })
+
+    const flag = siteAdapter.site('example.org').flag()
+    expect(flag.startsWith('data:image/svg+xml,')).to.be(true)
+  })
+
 })

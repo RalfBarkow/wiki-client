@@ -21,6 +21,14 @@ a img {
   border: 0;
 }
 
+/* headings: avoid sectioned h1 UA-dependent defaults */
+.page h1,
+.story h1,
+.item h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+}
+
 body {
   top: 0;
   left: 0;
